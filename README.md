@@ -1,6 +1,6 @@
-# OpenAI Proxy Example
+# @moduna/otel
 
-This project demonstrates sending a chat completion request through a local proxy endpoint.
+OpenTelemetry setup for Moduna AI traces in Node.js apps, including Vercel AI SDK and direct Gemini calls.
 
 ## Setup
 
@@ -10,29 +10,33 @@ This project demonstrates sending a chat completion request through a local prox
    pnpm install
    ```
 
-2. Set the proxy endpoint and key using either a shell or a `.env` file:
+2. Set the Moduna key using either a shell or a `.env` file:
 
    ```bash
-   export VOLEX_VIRTUAL_KEY="your-virtual-key"
-   export OPENAI_PROXY_URL="http://127.0.0.1:8080/v1"
+   export MODUNA_API_KEY="your-moduna-key"
    ```
 
    or create a `.env` file with:
 
    ```env
-   VOLEX_VIRTUAL_KEY=your-virtual-key
-   OPENAI_PROXY_URL=http://127.0.0.1:8080/v1
+   MODUNA_API_KEY=your-moduna-key
    ```
 
-3. Format or lint with Biome:
+## Two-line integration
+
+```ts
+import ModunaOTEL from "@moduna/otel";
+const otel = await ModunaOTEL.start({ serviceName: "my-ai-app" });
+```
+
+Use `experimental_telemetry: { isEnabled: true }` with the Vercel AI SDK after startup. For direct Gemini calls, wrap the request with `otel.traceGemini(...)`.
+
+## Development
+
+Format, lint, or build with:
 
    ```bash
    pnpm exec biome format
    pnpm exec biome lint
-   ```
-
-4. Run the example:
-
-   ```bash
-   pnpm start
+   pnpm build
    ```

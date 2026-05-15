@@ -7,13 +7,22 @@
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "skipLibCheck": true,
+        "declaration": true,
+        "allowImportingTsExtensions": true,
+        "emitDeclarationOnly": true,
         "types": [
             "node"
         ],
-        "rootDir": "./src",
-        "outDir": "dist"
+        "rootDir": ".",
+        "outDir": "dist",
+        "paths": {
+			"@/*": ["./*"]
+		}
     },
     "include": [
-        "src"
+        "src",
+        "services",
+        "interface",
+        "types"
     ]
 }
