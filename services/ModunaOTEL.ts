@@ -6,26 +6,61 @@ import { NodeSDK } from "@opentelemetry/sdk-node";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import type { ModunaOTELConfig } from "../interface/ModunaOTELConfig.js";
 import type { TraceCallback } from "../types/TraceCallback.js";
-
-export type ModunaOTELSDKIntegration = "langchain" | "vercel-ai-sdk";
+import type { ModunaOTELSDKIntegration } from "../types/SupportedSDK.js";
 
 const DEFAULT_ENDPOINT =
     "https://volex-otel-git-506013021984.us-central1.run.app/v1/traces";
-const DEFAULT_SERVICE_NAME = "moduna-otel";
 
+/**
+ * ModunaOTEL is a wrapper around OpenTelemetry's NodeSDK that provides an easy way to integrate OpenTelemetry tracing into applications, with a focus on tracing interactions with Generative AI models. It allows developers to capture detailed telemetry data about their GenAI requests, including the model used and the SDK integration, without having to manually manage spans and attributes. The class also includes functionality to automatically detect the GenAI system based on the model name, making it easier to categorize and analyze traces in observability platforms.
+ * To use ModunaOTEL, you typically start by calling the static `start` method to initialize the SDK, and then use the `traceGenAI` method to wrap any code that interacts with a GenAI model. This will automatically create spans with relevant attributes for each GenAI request, allowing you to gain insights into the performance and behavior of your GenAI interactions. Finally, you can call the `shutdown` method when your application is terminating to ensure that all telemetry data is properly flushed and resources are cleaned up.
+ * Example usage:
+ * ```typescript
+ * import ModunaOTEL from "@/services/ModunaOTEL.ts";
+ * 
+ * async function main() {
+ *     const otel = await ModunaOTEL.start({
+ *         agentName: "my-gen-ai-service",
+ *         sdkIntegration: "langchain",
+ *     });
+ * 
+ *     try {
+ *         const result = await otel.traceGenAI(
+ *             "generate-text",
+ *             "gpt-4",
+ *             "langchain",
+ *             async (span) => {
+ *                 // Your code to call the GenAI model goes here.
+ *                 // You can also set additional attributes on the span if needed.
+ *                 span.setAttribute("custom.attribute", "value");
+ *             }
+ *         );
+ *     } finally {
+ *         await otel.shutdown();
+ *     }
+ * }
+ * main();
+ * ```
+ */
 export class ModunaOTEL {
     private readonly sdk: NodeSDK;
+    private readonly sdkIntegration: ModunaOTELSDKIntegration;
     private started = false;
 
-    public constructor(config: ModunaOTELConfig = {}) {
+    /**
+     * Creates a new instance of ModunaOTEL with the provided configuration. The constructor initializes the OpenTelemetry NodeSDK with an OTLP trace exporter configured to send traces to the specified endpoint, along with any additional headers (such as an API key for authentication). The service name is also set based on the configuration or defaults to "moduna-otel". Note that this constructor does not start the SDK; you must call the `start` method to begin capturing traces.
+     * @param config Optional configuration for the ModunaOTEL instance, including API key, endpoint, service name, and additional headers. If not provided, it will use environment variables and defaults.
+     */
+    public constructor(config: ModunaOTELConfig) {
+        this.sdkIntegration = config.sdkIntegration;
         const apiKey = config.apiKey ?? process.env.MODUNA_API_KEY;
 
         this.sdk = new NodeSDK({
             resource: resourceFromAttributes({
-                [ATTR_SERVICE_NAME]: config.serviceName ?? DEFAULT_SERVICE_NAME,
+                [ATTR_SERVICE_NAME]: config.agentName,
             }),
             traceExporter: new OTLPTraceExporter({
-                url: config.endpoint ?? DEFAULT_ENDPOINT,
+                url: DEFAULT_ENDPOINT,
                 headers: {
                     ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
                     ...config.headers,
@@ -40,7 +75,7 @@ export class ModunaOTEL {
      * @param config Optional configuration for the ModunaOTEL instance. If not provided, it will use environment variables and defaults.
      * @returns A promise that resolves to the started ModunaOTEL instance.
      */
-    public static async start(config: ModunaOTELConfig = {}): Promise<ModunaOTEL> {
+    public static async start(config: ModunaOTELConfig): Promise<ModunaOTEL> {
         const otel = new ModunaOTEL(config);
         await otel.start();
         return otel;
@@ -64,48 +99,18 @@ export class ModunaOTEL {
         this.started = false;
     }
 
-    private static detectGenAISystem(model: string): string {
-        const normalized = model.toLowerCase();
-
-        if (normalized.includes("gemini")) {
-            return "google.gemini";
-        }
-
-        if (normalized.includes("claude") || normalized.includes("anthropic")) {
-            return "anthropic.claude";
-        }
-
-        if (
-            normalized.includes("gpt") ||
-            normalized.includes("openai") ||
-            normalized.includes("chat")
-        ) {
-            return "openai.chat";
-        }
-
-        if (normalized.includes("azure")) {
-            return "azure.openai";
-        }
-
-        return "unknown";
-    }
-
-    public async traceGenAI<T>(
+    public async instrument<T>(
         spanName: string,
         model: string,
-        sdkIntegration: ModunaOTELSDKIntegration,
         callback: TraceCallback<T>,
-        system?: string,
     ): Promise<T> {
         const tracer = trace.getTracer("moduna-gen-ai");
-        const genAiSystem = system ?? ModunaOTEL.detectGenAISystem(model);
 
         return tracer.startActiveSpan(
             spanName,
             { kind: SpanKind.CLIENT },
             async (span) => {
-                span.setAttribute("sdk.integration", sdkIntegration);
-                span.setAttribute("gen_ai.system", genAiSystem);
+                span.setAttribute("sdk.integration", this.sdkIntegration);
                 span.setAttribute("gen_ai.request.model", model);
 
                 try {
@@ -118,15 +123,6 @@ export class ModunaOTEL {
                 }
             },
         );
-    }
-
-    public async traceGemini<T>(
-        spanName: string,
-        model: string,
-        sdkIntegration: ModunaOTELSDKIntegration,
-        callback: TraceCallback<T>,
-    ): Promise<T> {
-        return this.traceGenAI(spanName, model, sdkIntegration, callback, "google.gemini");
     }
 }
 

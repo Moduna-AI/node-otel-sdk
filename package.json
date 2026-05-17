@@ -15,7 +15,8 @@
         "build": "tsc",
         "format": "biome format",
         "lint": "biome lint",
-        "test:vercel-ai-sdk": "tsx test/vercel-ai-sdk.ts"
+        "test:vercel-ai-sdk": "tsx test/vercel-ai-sdk.ts",
+        "test:langchain": "tsx test/langchain.ts"
     },
     "dependencies": {
         "@opentelemetry/api": "^1.9.1",

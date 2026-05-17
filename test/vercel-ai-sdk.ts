@@ -18,7 +18,8 @@ for (const envVar of requiredEnvVars) {
 }
 
 const otel = await ModunaOTEL.start({
-    serviceName: "moduna-vercel-ai-sdk-test",
+    agentName: "moduna-vercel-ai-sdk-test",
+    sdkIntegration: "vercel_ai_sdk",
 });
 
 try {
@@ -27,9 +28,6 @@ try {
         prompt: "Reply with exactly: moduna otel vercel ai sdk test",
         experimental_telemetry: {
             isEnabled: true,
-            metadata: {
-                testName: "vercel-ai-sdk",
-            },
         },
     });
 
