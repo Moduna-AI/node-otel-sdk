@@ -31,7 +31,7 @@ const llm = new ChatGoogleGenerativeAI({
 
 try {
     const callbackResponse = await llm.invoke(
-        "Reply with exactly: moduna otel langchain gemini callback test",
+        "Hi there! This is a test",
         {
             callbacks: [handler],
             metadata: {

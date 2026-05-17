@@ -25,7 +25,7 @@ const otel = new ModunaOTEL({
 try {
     const generated = await generateText({
         model: google("gemini-2.5-flash-lite"),
-        prompt: "Reply with exactly: moduna otel vercel ai sdk test",
+        prompt: "Hi there! This is a test",
         experimental_telemetry: otel.vercelTelemetry({
             conversationId: "conversation-generate-text",
             sessionId: "session-vercel-ai-sdk-test",
