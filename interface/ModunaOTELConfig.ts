@@ -1,38 +1,53 @@
-import { ModunaOTELSDKIntegration } from "@/types/SupportedSDK";
+import type {
+    ModunaOTELFramework,
+    ModunaOTELSDKIntegration,
+} from "../types/SupportedSDK.js";
 
 /**
- * Configuration options for the ModunaOTEL instance. This interface defines the shape of the configuration object that can be passed to the `start` method of ModunaOTEL. It includes options for specifying an API key for authentication, a custom service name for tracing, additional headers to include in trace exports, and the SDK integration to trace. If any of these options are not provided, ModunaOTEL will attempt to use environment variables or sensible defaults where applicable.
- * Example usage:
- * ```typescript
- * import ModunaOTEL from "@/services/ModunaOTEL";
- * 
- * async function main() {
- *     const otel = await ModunaOTEL.start({
- *         serviceName: "my-awesome-service",
- *         apiKey: "your-moduna-api-key",
- *         headers: {
- *             "X-Custom-Header": "value",
- *         },
- *         sdkIntegration: "langchain",
- *     });
- * 
- *     try {
- *         // Your application code here. All traces will be automatically captured and sent to Moduna.
- *         // You can also create manual spans if needed:
- *         const tracer = otel.getTracer();
- *         const span = tracer.startSpan("my-custom-span");
- *         span.setAttribute("custom.attribute", "value");
- *         span.end();
- *     } finally {
- *         await otel.shutdown();
- *     }
- * }
- * main();
- * ```
+ * Shared configuration for the Moduna OpenTelemetry SDK.
  */
-export interface ModunaOTELConfig {
-    apiKey?: string; // The API key for authenticating with the Moduna tracing backend. If not provided, it will attempt to read from the MODUNA_API_KEY environment variable.
+interface ModunaOTELBaseConfig {
+    /**
+     * API key for authenticating with Moduna. Falls back to MODUNA_API_KEY.
+     */
+    apiKey?: string;
+
+    /**
+     * Service name attached to emitted OpenTelemetry resources.
+     */
     agentName: string;
-    sdkIntegration: ModunaOTELSDKIntegration;
+
+    /**
+     * Additional OTLP headers sent with telemetry exports.
+     */
     headers?: Record<string, string>;
 }
+
+/**
+ * Configuration options for a ModunaOTEL instance.
+ */
+export type ModunaOTELConfig = ModunaOTELBaseConfig &
+    (
+        | {
+              /**
+               * Framework that will use the Moduna OpenTelemetry SDK.
+               */
+              framework: ModunaOTELFramework;
+
+              /**
+               * Deprecated. Use framework instead.
+               */
+              sdkIntegration?: ModunaOTELSDKIntegration;
+          }
+        | {
+              /**
+               * Framework that will use the Moduna OpenTelemetry SDK.
+               */
+              framework?: ModunaOTELFramework;
+
+              /**
+               * Deprecated. Use framework instead.
+               */
+              sdkIntegration: ModunaOTELSDKIntegration;
+          }
+    );

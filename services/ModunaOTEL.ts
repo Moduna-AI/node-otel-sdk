@@ -1,79 +1,170 @@
 import process from "node:process";
 import { SpanKind, trace } from "@opentelemetry/api";
+import type { AttributeValue } from "@opentelemetry/api";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import type { ModunaOTELConfig } from "../interface/ModunaOTELConfig.js";
 import type { TraceCallback } from "../types/TraceCallback.js";
-import type { ModunaOTELSDKIntegration } from "../types/SupportedSDK.js";
+import type { ModunaOTELFramework } from "../types/SupportedSDK.js";
+import type {
+    ModunaTelemetryMetadata,
+    ModunaTraceContext,
+} from "../types/TraceContext.js";
+import {
+    ModunaLangChainCallbackHandler,
+    registerGlobalModunaLangChainHandler,
+} from "./ModunaLangChainCallbackHandler.js";
 
 const DEFAULT_ENDPOINT =
     "https://volex-otel-git-506013021984.us-central1.run.app/v1/traces";
 
-/**
- * ModunaOTEL is a wrapper around OpenTelemetry's NodeSDK that provides an easy way to integrate OpenTelemetry tracing into applications, with a focus on tracing interactions with Generative AI models. It allows developers to capture detailed telemetry data about their GenAI requests, including the model used and the SDK integration, without having to manually manage spans and attributes. The class also includes functionality to automatically detect the GenAI system based on the model name, making it easier to categorize and analyze traces in observability platforms.
- * To use ModunaOTEL, you typically start by calling the static `start` method to initialize the SDK, and then use the `traceGenAI` method to wrap any code that interacts with a GenAI model. This will automatically create spans with relevant attributes for each GenAI request, allowing you to gain insights into the performance and behavior of your GenAI interactions. Finally, you can call the `shutdown` method when your application is terminating to ensure that all telemetry data is properly flushed and resources are cleaned up.
- * Example usage:
- * ```typescript
- * import ModunaOTEL from "@/services/ModunaOTEL.ts";
- * 
- * async function main() {
- *     const otel = await ModunaOTEL.start({
- *         agentName: "my-gen-ai-service",
- *         sdkIntegration: "langchain",
- *     });
- * 
- *     try {
- *         const result = await otel.traceGenAI(
- *             "generate-text",
- *             "gpt-4",
- *             "langchain",
- *             async (span) => {
- *                 // Your code to call the GenAI model goes here.
- *                 // You can also set additional attributes on the span if needed.
- *                 span.setAttribute("custom.attribute", "value");
- *             }
- *         );
- *     } finally {
- *         await otel.shutdown();
- *     }
- * }
- * main();
- * ```
- */
-export class ModunaOTEL {
-    private readonly sdk: NodeSDK;
-    private readonly sdkIntegration: ModunaOTELSDKIntegration;
-    private started = false;
+type OTLPTraceExporterConfig = ConstructorParameters<typeof OTLPTraceExporter>[0];
+type OTLPTraceExportArgs = Parameters<OTLPTraceExporter["export"]>;
+type OTLPTraceExportResult = Parameters<OTLPTraceExportArgs[1]>[0];
+
+class SilentOTLPTraceExporter extends OTLPTraceExporter {
+    private readonly onFailure: (error: unknown) => void;
 
     /**
-     * Creates a new instance of ModunaOTEL with the provided configuration. The constructor initializes the OpenTelemetry NodeSDK with an OTLP trace exporter configured to send traces to the specified endpoint, along with any additional headers (such as an API key for authentication). The service name is also set based on the configuration or defaults to "moduna-otel". Note that this constructor does not start the SDK; you must call the `start` method to begin capturing traces.
-     * @param config Optional configuration for the ModunaOTEL instance, including API key, endpoint, service name, and additional headers. If not provided, it will use environment variables and defaults.
+     * Creates an OTLP exporter that reports failures without breaking user code.
+     *
+     * @param config OTLP HTTP exporter configuration.
+     * @param onFailure Callback invoked when export fails.
      */
-    public constructor(config: ModunaOTELConfig) {
-        this.sdkIntegration = config.sdkIntegration;
-        const apiKey = config.apiKey ?? process.env.MODUNA_API_KEY;
-
-        this.sdk = new NodeSDK({
-            resource: resourceFromAttributes({
-                [ATTR_SERVICE_NAME]: config.agentName,
-            }),
-            traceExporter: new OTLPTraceExporter({
-                url: DEFAULT_ENDPOINT,
-                headers: {
-                    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-                    ...config.headers,
-                },
-            }),
-        });
+    public constructor(
+        config: OTLPTraceExporterConfig,
+        onFailure: (error: unknown) => void,
+    ) {
+        super(config);
+        this.onFailure = onFailure;
     }
 
     /**
-     * Starts the ModunaOTEL instance. This method must be called before using any tracing functionality. 
-     * It is recommended to call this method as early as possible in the application lifecycle to ensure that all traces are captured.
-     * @param config Optional configuration for the ModunaOTEL instance. If not provided, it will use environment variables and defaults.
-     * @returns A promise that resolves to the started ModunaOTEL instance.
+     * Exports spans and converts synchronous exporter failures into callback results.
+     *
+     * @param spans Readable spans from the OpenTelemetry processor.
+     * @param resultCallback OpenTelemetry export completion callback.
+     */
+    public override export(
+        spans: OTLPTraceExportArgs[0],
+        resultCallback: OTLPTraceExportArgs[1],
+    ): ReturnType<OTLPTraceExporter["export"]> {
+        try {
+            return super.export(spans, (result) => {
+                if (result.error || result.code !== 0) {
+                    this.onFailure(
+                        result.error ??
+                            new Error(
+                                `Moduna OTEL exporter failed with code ${result.code}.`,
+                            ),
+                    );
+                }
+
+                resultCallback(result);
+            });
+        } catch (error) {
+            this.onFailure(error);
+            resultCallback(this.createFailureResult(error));
+        }
+    }
+
+    private createFailureResult(error: unknown): OTLPTraceExportResult {
+        return {
+            code: 1,
+            error: error instanceof Error ? error : new Error(String(error)),
+        };
+    }
+}
+
+/**
+ * Vercel AI SDK compatible telemetry settings.
+ */
+export interface ModunaVercelTelemetrySettings {
+    /**
+     * Enables Vercel AI SDK telemetry for the current model call.
+     */
+    isEnabled: true;
+
+    /**
+     * Per-call Moduna metadata attached to the generated OpenTelemetry spans.
+     */
+    metadata: ModunaTelemetryMetadata & Record<string, AttributeValue>;
+}
+
+interface NormalizedConfig {
+    /**
+     * API key used by the Moduna OTLP endpoint.
+     */
+    apiKey?: string;
+
+    /**
+     * Service name attached to telemetry resources.
+     */
+    agentName: string;
+
+    /**
+     * Framework that will emit telemetry through this SDK.
+     */
+    framework: ModunaOTELFramework;
+
+    /**
+     * Extra headers sent to the OTLP endpoint.
+     */
+    headers?: Record<string, string>;
+}
+
+interface SharedSDKState {
+    /**
+     * Singleton NodeSDK instance used by all ModunaOTEL wrappers.
+     */
+    sdk?: NodeSDK;
+
+    /**
+     * Startup promise for the singleton SDK.
+     */
+    startPromise?: Promise<void>;
+
+    /**
+     * Whether the singleton SDK has started successfully.
+     */
+    started: boolean;
+
+    /**
+     * Whether a warning has already been sent for a telemetry failure.
+     */
+    warned: boolean;
+}
+
+/**
+ * One-line OpenTelemetry setup for Moduna AI traces.
+ */
+export class ModunaOTEL {
+    private static readonly shared: SharedSDKState = {
+        started: false,
+        warned: false,
+    };
+
+    private readonly framework: ModunaOTELFramework;
+
+    /**
+     * Creates a Moduna OTEL wrapper and starts telemetry asynchronously.
+     *
+     * @param config SDK configuration for the current application.
+     */
+    public constructor(config: ModunaOTELConfig) {
+        const normalizedConfig = this.normalizeConfig(config);
+        this.framework = normalizedConfig.framework;
+        ModunaOTEL.shared.sdk ??= this.createSDK(normalizedConfig);
+        void this.start();
+    }
+
+    /**
+     * Creates and starts a ModunaOTEL instance.
+     *
+     * @param config SDK configuration for the current application.
+     * @returns The started ModunaOTEL wrapper.
      */
     public static async start(config: ModunaOTELConfig): Promise<ModunaOTEL> {
         const otel = new ModunaOTEL(config);
@@ -81,40 +172,131 @@ export class ModunaOTEL {
         return otel;
     }
 
+    /**
+     * Starts the singleton OpenTelemetry SDK.
+     */
     public async start(): Promise<void> {
-        if (this.started) {
+        if (ModunaOTEL.shared.started) {
             return;
         }
 
-        this.sdk.start();
-        this.started = true;
+        ModunaOTEL.shared.startPromise ??= this.startSafely();
+        await ModunaOTEL.shared.startPromise;
     }
 
+    /**
+     * Shuts down the singleton OpenTelemetry SDK.
+     */
     public async shutdown(): Promise<void> {
-        if (!this.started) {
+        const sdk = ModunaOTEL.shared.sdk;
+
+        if (!ModunaOTEL.shared.started || !sdk) {
             return;
         }
 
-        await this.sdk.shutdown();
-        this.started = false;
+        try {
+            await sdk.shutdown();
+        } catch (error) {
+            this.warnOnce(error);
+        } finally {
+            ModunaOTEL.shared.started = false;
+            ModunaOTEL.shared.startPromise = undefined;
+        }
     }
 
+    /**
+     * Creates telemetry settings for one Vercel AI SDK generateText or streamText call.
+     *
+     * @param context Conversation or session identifiers for the current AI call.
+     * @returns Vercel AI SDK experimental telemetry settings.
+     */
+    public vercelTelemetry(
+        context: ModunaTraceContext = {},
+    ): ModunaVercelTelemetrySettings {
+        return {
+            isEnabled: true,
+            metadata: this.createTraceMetadata(context),
+        };
+    }
+
+    /**
+     * Creates a LangChain callback handler for per-call usage.
+     *
+     * @param context Default conversation or session identifiers.
+     * @returns LangChain callback handler that emits Moduna spans.
+     */
+    public langChainHandler(
+        context: ModunaTraceContext = {},
+    ): ModunaLangChainCallbackHandler {
+        return new ModunaLangChainCallbackHandler({
+            traceContext: context,
+        });
+    }
+
+    /**
+     * Registers a LangChain callback handler for all LangChain runs.
+     *
+     * @param context Default conversation or session identifiers.
+     * @returns The globally registered LangChain callback handler.
+     */
+    public registerGlobalLangChainHandler(
+        context: ModunaTraceContext = {},
+    ): ModunaLangChainCallbackHandler {
+        const handler = this.langChainHandler(context);
+        registerGlobalModunaLangChainHandler(handler);
+        return handler;
+    }
+
+    /**
+     * Instruments a callback with a Moduna span.
+     *
+     * @param spanName Name for the emitted span.
+     * @param callback Callback executed inside the active span.
+     * @returns The callback result.
+     */
+    public instrument<T>(
+        spanName: string,
+        callback: TraceCallback<T>,
+    ): Promise<T>;
+
+    /**
+     * Instruments a callback with a Moduna span and per-call trace context.
+     *
+     * @param spanName Name for the emitted span.
+     * @param context Conversation or session identifiers for the current AI call.
+     * @param callback Callback executed inside the active span.
+     * @returns The callback result.
+     */
+    public instrument<T>(
+        spanName: string,
+        context: ModunaTraceContext,
+        callback: TraceCallback<T>,
+    ): Promise<T>;
+
+    /**
+     * Instruments a callback with optional Moduna trace context.
+     */
     public async instrument<T>(
         spanName: string,
-        model: string,
-        callback: TraceCallback<T>,
+        contextOrCallback: ModunaTraceContext | TraceCallback<T>,
+        callback?: TraceCallback<T>,
     ): Promise<T> {
+        const { traceContext, traceCallback } = this.parseInstrumentArgs(
+            contextOrCallback,
+            callback,
+        );
         const tracer = trace.getTracer("moduna-gen-ai");
 
         return tracer.startActiveSpan(
             spanName,
             { kind: SpanKind.CLIENT },
             async (span) => {
-                span.setAttribute("sdk.integration", this.sdkIntegration);
-                span.setAttribute("gen_ai.request.model", model);
+                span.setAttribute("moduna.framework", this.framework);
+                span.setAttribute("sdk.integration", this.framework);
+                this.applyTraceContext(span, traceContext);
 
                 try {
-                    return await callback(span);
+                    return await traceCallback(span);
                 } catch (error) {
                     span.recordException(error as Error);
                     throw error;
@@ -123,6 +305,109 @@ export class ModunaOTEL {
                 }
             },
         );
+    }
+
+    private normalizeConfig(config: ModunaOTELConfig): NormalizedConfig {
+        return {
+            agentName: config.agentName,
+            apiKey: config.apiKey ?? process.env.MODUNA_API_KEY,
+            framework: config.framework ?? config.sdkIntegration,
+            headers: config.headers,
+        };
+    }
+
+    private createSDK(config: NormalizedConfig): NodeSDK {
+        return new NodeSDK({
+            resource: resourceFromAttributes({
+                [ATTR_SERVICE_NAME]: config.agentName,
+                "moduna.framework": config.framework,
+                "sdk.integration": config.framework,
+            }),
+            traceExporter: new SilentOTLPTraceExporter(
+                {
+                    url: DEFAULT_ENDPOINT,
+                    headers: {
+                        ...(config.apiKey
+                            ? { Authorization: `Bearer ${config.apiKey}` }
+                            : {}),
+                        ...config.headers,
+                    },
+                },
+                (error) => this.warnOnce(error),
+            ),
+        });
+    }
+
+    private async startSafely(): Promise<void> {
+        const sdk = ModunaOTEL.shared.sdk;
+
+        if (!sdk) {
+            return;
+        }
+
+        try {
+            await Promise.resolve(sdk.start());
+            ModunaOTEL.shared.started = true;
+        } catch (error) {
+            this.warnOnce(error);
+        }
+    }
+
+    private createTraceMetadata(
+        context: ModunaTraceContext,
+    ): ModunaTelemetryMetadata & Record<string, AttributeValue> {
+        return {
+            ...(context.conversationId
+                ? { "moduna.conversation.id": context.conversationId }
+                : {}),
+            ...(context.sessionId
+                ? { "moduna.session.id": context.sessionId }
+                : {}),
+        };
+    }
+
+    private applyTraceContext(
+        span: Parameters<TraceCallback<unknown>>[0],
+        context: ModunaTraceContext,
+    ): void {
+        const metadata = this.createTraceMetadata(context);
+
+        for (const [key, value] of Object.entries(metadata)) {
+            span.setAttribute(key, value);
+        }
+    }
+
+    private parseInstrumentArgs<T>(
+        contextOrCallback: ModunaTraceContext | TraceCallback<T>,
+        callback?: TraceCallback<T>,
+    ): {
+        traceContext: ModunaTraceContext;
+        traceCallback: TraceCallback<T>;
+    } {
+        if (typeof contextOrCallback === "function") {
+            return {
+                traceContext: {},
+                traceCallback: contextOrCallback,
+            };
+        }
+
+        if (!callback) {
+            throw new TypeError("ModunaOTEL.instrument requires a callback.");
+        }
+
+        return {
+            traceContext: contextOrCallback,
+            traceCallback: callback,
+        };
+    }
+
+    private warnOnce(error: unknown): void {
+        if (ModunaOTEL.shared.warned) {
+            return;
+        }
+
+        ModunaOTEL.shared.warned = true;
+        console.warn("Moduna OTEL failed to send telemetry.", error);
     }
 }
 

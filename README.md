@@ -1,42 +1,130 @@
 # @moduna/otel
 
-OpenTelemetry setup for Moduna AI traces in Node.js apps, including Vercel AI SDK and direct Gemini calls.
+[![npm version](https://img.shields.io/npm/v/%40moduna%2Fotel.svg)](https://www.npmjs.com/package/@moduna/otel)
+[![npm downloads](https://img.shields.io/npm/dm/%40moduna%2Fotel.svg)](https://www.npmjs.com/package/@moduna/otel)
+[![license](https://img.shields.io/npm/l/%40moduna%2Fotel.svg)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-ready-3178c6.svg)](https://www.typescriptlang.org/)
+[![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-425cc7.svg)](https://opentelemetry.io/)
+[![pnpm](https://img.shields.io/badge/package%20manager-pnpm-f69220.svg)](https://pnpm.io/)
+[![GitHub stars](https://img.shields.io/github/stars/Moduna-AI/node-otel-sdk.svg?style=social)](https://github.com/Moduna-AI/node-otel-sdk/stargazers)
+
+OpenTelemetry setup for Moduna AI traces in Node.js apps, including Vercel AI SDK and LangChain.
+
+## Project Health
+
+| Metric | Status |
+| --- | --- |
+| Package | [`@moduna/otel`](https://www.npmjs.com/package/@moduna/otel) |
+| Runtime | Node.js ESM |
+| Types | TypeScript declarations included |
+| License | MIT |
+| Package managers | npm, pnpm, bun |
+| Frameworks | Vercel AI SDK, LangChain |
+| Telemetry | OpenTelemetry traces |
+
+## Install
+
+```bash
+npm install @moduna/otel
+pnpm add @moduna/otel
+bun add @moduna/otel
+```
 
 ## Setup
 
-1. Install dependencies:
+Set the Moduna key using either a shell or a `.env` file:
 
-   ```bash
-   pnpm install
-   ```
+```bash
+export MODUNA_API_KEY="your-moduna-key"
+```
 
-2. Set the Moduna key using either a shell or a `.env` file:
+or create a `.env` file with:
 
-   ```bash
-   export MODUNA_API_KEY="your-moduna-key"
-   ```
+```env
+MODUNA_API_KEY=your-moduna-key
+```
 
-   or create a `.env` file with:
-
-   ```env
-   MODUNA_API_KEY=your-moduna-key
-   ```
-
-## Two-line integration
+## One-line integration
 
 ```ts
 import ModunaOTEL from "@moduna/otel";
-const otel = await ModunaOTEL.start({ serviceName: "my-ai-app" });
+
+const otel = new ModunaOTEL({
+    agentName: "my-ai-app",
+    framework: "vercel-ai-sdk",
+});
 ```
 
-Use `experimental_telemetry: { isEnabled: true }` with the Vercel AI SDK after startup. For direct Gemini calls, wrap the request with `otel.traceGemini(...)`.
+## Framework Usage
+
+Choose the framework you are using with Moduna OTEL.
+
+<details open>
+<summary><strong>Vercel AI SDK</strong></summary>
+
+Pass per-call conversation or session identifiers to `generateText` and `streamText`.
+
+```ts
+const result = await generateText({
+    model,
+    prompt,
+    experimental_telemetry: otel.vercelTelemetry({
+        conversationId: "conversation-123",
+        sessionId: "session-456",
+    }),
+});
+```
+
+The IDs are attached to the generated spans as Moduna telemetry metadata.
+
+</details>
+
+<details>
+<summary><strong>LangChain</strong></summary>
+
+Use Moduna as a LangChain callback handler.
+
+```ts
+import ModunaOTEL from "@moduna/otel";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+
+const otel = new ModunaOTEL({
+    agentName: "my-ai-app",
+    framework: "langchain",
+});
+const handler = otel.langChainHandler();
+const model = new ChatGoogleGenerativeAI({ model: "gemini-1.5-pro" });
+
+const result = await model.invoke("Hello, world!", {
+    callbacks: [handler],
+    metadata: {
+        conversationId: "conversation-123",
+        sessionId: "session-456",
+    },
+});
+```
+
+Or register it globally for all LangChain runs.
+
+```ts
+otel.registerGlobalLangChainHandler();
+
+const result = await model.invoke("Hello, world!", {
+    metadata: {
+        conversationId: "conversation-123",
+        sessionId: "session-456",
+    },
+});
+```
+
+</details>
 
 ## Development
 
 Format, lint, or build with:
 
-   ```bash
-   pnpm exec biome format
-   pnpm exec biome lint
-   pnpm build
-   ```
+```bash
+pnpm run build
+pnpm run lint
+pnpm test
+```
