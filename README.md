@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/%40moduna%2Fotel.svg)](https://www.npmjs.com/package/@moduna/otel)
 [![npm downloads](https://img.shields.io/npm/dm/%40moduna%2Fotel.svg)](https://www.npmjs.com/package/@moduna/otel)
+[![CI](https://github.com/Moduna-AI/node-otel-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/Moduna-AI/node-otel-sdk/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/%40moduna%2Fotel.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-ready-3178c6.svg)](https://www.typescriptlang.org/)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-425cc7.svg)](https://opentelemetry.io/)
@@ -21,6 +22,22 @@ OpenTelemetry setup for Moduna AI traces in Node.js apps, including Vercel AI SD
 | Package managers | npm, pnpm, bun |
 | Frameworks | Vercel AI SDK, LangChain |
 | Telemetry | OpenTelemetry traces |
+
+## Release Workflow
+
+This package uses GitHub Actions and Changesets for CI, changelog updates, versioning, and publishing.
+
+1. Create a changeset for user-facing changes:
+
+   ```bash
+   pnpm changeset
+   ```
+
+2. Merge the feature PR. The release workflow opens a version PR with `CHANGELOG.md` and `package.json` updates.
+
+3. Merge the version PR. The release workflow publishes the package to npm.
+
+The release workflow requires an `NPM_TOKEN` repository secret with permission to publish `@moduna/otel`.
 
 ## Install
 
