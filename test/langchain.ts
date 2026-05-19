@@ -29,45 +29,38 @@ const llm = new ChatGoogleGenerativeAI({
     temperature: 0,
 });
 
-try {
-    const callbackResponse = await llm.invoke(
-        "Hi there! This is a test",
-        {
-            callbacks: [handler],
-            metadata: {
-                conversationId: "conversation-langchain-callback",
-                sessionId: "session-langchain-test",
-            },
-        },
-    );
+const callbackResponse = await llm.invoke("Hi there! This is a test", {
+    callbacks: [handler],
+    metadata: {
+        conversationId: "conversation-langchain-callback",
+        sessionId: "session-langchain-test",
+    },
+});
 
-    console.log(callbackResponse.text);
+console.log(callbackResponse.text);
 
-    otel.registerGlobalLangChainHandler();
+otel.registerGlobalLangChainHandler();
 
-    const globalResponse = await llm.invoke(
-        "Reply with exactly: moduna otel langchain gemini global test",
-        {
-            metadata: {
-                conversationId: "conversation-langchain-global",
-                sessionId: "session-langchain-test",
-            },
-        },
-    );
-
-    console.log(globalResponse.text);
-
-    const manualResponse = await otel.instrument(
-        "langchain-gemini-manual-invoke",
-        {
-            conversationId: "conversation-langchain-gemini",
+const globalResponse = await llm.invoke(
+    "Hi there! this is a test.",
+    {
+        metadata: {
+            conversationId: "conversation-langchain-global",
             sessionId: "session-langchain-test",
         },
-        async () =>
-            llm.invoke("Reply with exactly: moduna otel langchain gemini test"),
-    );
+    },
+);
 
-    console.log(manualResponse.text);
-} finally {
-    await otel.shutdown();
-}
+console.log(globalResponse.text);
+
+const manualResponse = await otel.instrument(
+    "langchain-gemini-manual-invoke",
+    {
+        conversationId: "conversation-langchain-gemini",
+        sessionId: "session-langchain-test",
+    },
+    async () =>
+        llm.invoke("Hi there! this is a test."),
+);
+
+console.log(manualResponse.text);

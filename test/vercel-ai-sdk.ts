@@ -22,32 +22,28 @@ const otel = new ModunaOTEL({
     framework: "vercel-ai-sdk",
 });
 
-try {
-    const generated = await generateText({
-        model: google("gemini-2.5-flash-lite"),
-        prompt: "Hi there! This is a test",
-        experimental_telemetry: otel.vercelTelemetry({
-            conversationId: "conversation-generate-text",
-            sessionId: "session-vercel-ai-sdk-test",
-        }),
-    });
+const generated = await generateText({
+    model: google("gemini-2.5-flash-lite"),
+    prompt: "Hi there! This is a test",
+    experimental_telemetry: otel.vercelTelemetry({
+        conversationId: "conversation-generate-text",
+        sessionId: "session-vercel-ai-sdk-test",
+    }),
+});
 
-    console.log(generated.text);
+console.log(generated.text);
 
-    const streamed = streamText({
-        model: google("gemini-2.5-flash-lite"),
-        prompt: "Stream exactly: moduna otel vercel ai sdk stream test",
-        experimental_telemetry: otel.vercelTelemetry({
-            conversationId: "conversation-stream-text",
-            sessionId: "session-vercel-ai-sdk-test",
-        }),
-    });
+const streamed = streamText({
+    model: google("gemini-2.5-flash-lite"),
+    prompt: "Hi there! This is a test for streaming.",
+    experimental_telemetry: otel.vercelTelemetry({
+        conversationId: "conversation-stream-text",
+        sessionId: "session-vercel-ai-sdk-test",
+    }),
+});
 
-    for await (const textPart of streamed.textStream) {
-        process.stdout.write(textPart);
-    }
-
-    process.stdout.write("\n");
-} finally {
-    await otel.shutdown();
+for await (const textPart of streamed.textStream) {
+    process.stdout.write(textPart);
 }
+
+process.stdout.write("\n");

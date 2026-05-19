@@ -21,6 +21,11 @@ interface ModunaOTELBaseConfig {
      * Additional OTLP headers sent with telemetry exports.
      */
     headers?: Record<string, string>;
+
+    /**
+     * Automatically flushes and shuts down telemetry when the Node.js process exits.
+     */
+    autoShutdown?: boolean;
 }
 
 /**

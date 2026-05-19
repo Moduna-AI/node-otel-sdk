@@ -113,6 +113,11 @@ interface NormalizedConfig {
      * Extra headers sent to the OTLP endpoint.
      */
     headers?: Record<string, string>;
+
+    /**
+     * Whether process lifecycle hooks should shut down telemetry automatically.
+     */
+    autoShutdown: boolean;
 }
 
 interface SharedSDKState {
@@ -125,6 +130,16 @@ interface SharedSDKState {
      * Startup promise for the singleton SDK.
      */
     startPromise?: Promise<void>;
+
+    /**
+     * Shutdown promise for the singleton SDK.
+     */
+    shutdownPromise?: Promise<void>;
+
+    /**
+     * Whether Node.js process lifecycle hooks have already been registered.
+     */
+    lifecycleHooksRegistered: boolean;
 
     /**
      * Whether the singleton SDK has started successfully.
@@ -142,6 +157,7 @@ interface SharedSDKState {
  */
 export class ModunaOTEL {
     private static readonly shared: SharedSDKState = {
+        lifecycleHooksRegistered: false,
         started: false,
         warned: false,
     };
@@ -157,6 +173,7 @@ export class ModunaOTEL {
         const normalizedConfig = this.normalizeConfig(config);
         this.framework = normalizedConfig.framework;
         ModunaOTEL.shared.sdk ??= this.createSDK(normalizedConfig);
+        this.registerLifecycleHooks(normalizedConfig);
         void this.start();
     }
 
@@ -188,6 +205,18 @@ export class ModunaOTEL {
      * Shuts down the singleton OpenTelemetry SDK.
      */
     public async shutdown(): Promise<void> {
+        ModunaOTEL.shared.shutdownPromise ??= this.shutdownSafely().finally(
+            () => {
+                ModunaOTEL.shared.shutdownPromise = undefined;
+            },
+        );
+        await ModunaOTEL.shared.shutdownPromise;
+    }
+
+    /**
+     * Shuts down the singleton OpenTelemetry SDK and suppresses telemetry failures.
+     */
+    private async shutdownSafely(): Promise<void> {
         const sdk = ModunaOTEL.shared.sdk;
 
         if (!ModunaOTEL.shared.started || !sdk) {
@@ -310,10 +339,35 @@ export class ModunaOTEL {
     private normalizeConfig(config: ModunaOTELConfig): NormalizedConfig {
         return {
             agentName: config.agentName,
+            autoShutdown: config.autoShutdown ?? true,
             apiKey: config.apiKey ?? process.env.MODUNA_API_KEY,
             framework: config.framework ?? config.sdkIntegration,
             headers: config.headers,
         };
+    }
+
+    private registerLifecycleHooks(config: NormalizedConfig): void {
+        if (
+            !config.autoShutdown ||
+            ModunaOTEL.shared.lifecycleHooksRegistered
+        ) {
+            return;
+        }
+
+        process.once("beforeExit", () => {
+            void this.shutdown();
+        });
+        process.once("SIGINT", () => {
+            void this.shutdown().finally(() => {
+                process.exit(130);
+            });
+        });
+        process.once("SIGTERM", () => {
+            void this.shutdown().finally(() => {
+                process.exit(143);
+            });
+        });
+        ModunaOTEL.shared.lifecycleHooksRegistered = true;
     }
 
     private createSDK(config: NormalizedConfig): NodeSDK {
