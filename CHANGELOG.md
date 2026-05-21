@@ -1,5 +1,11 @@
 # @moduna/otel
 
+## 1.1.4
+
+### Patch Changes
+
+- Added configurable LangChain callback debug logging and richer LLM telemetry attributes.
+
 ## 1.0.0
 
 ### Major Changes

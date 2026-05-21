@@ -20,7 +20,7 @@ const otel = new ModunaOTEL({
     agentName: "moduna-langchain-gemini-test",
     framework: "langchain",
 });
-const handler = otel.langChainHandler();
+const handler = otel.langChainHandler({}, { debug: true });
 
 const llm = new ChatGoogleGenerativeAI({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
@@ -39,7 +39,7 @@ const callbackResponse = await llm.invoke("Hi there! This is a test", {
 
 console.log(callbackResponse.text);
 
-otel.registerGlobalLangChainHandler();
+otel.registerGlobalLangChainHandler({}, { debug: true });
 
 const globalResponse = await llm.invoke(
     "Hi there! this is a test.",

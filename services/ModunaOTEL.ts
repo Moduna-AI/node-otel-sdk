@@ -12,6 +12,7 @@ import type {
     ModunaTelemetryMetadata,
     ModunaTraceContext,
 } from "../types/TraceContext.js";
+import type { ModunaLangChainCallbackHandlerConfig } from "./ModunaLangChainCallbackHandler.js";
 import {
     ModunaLangChainCallbackHandler,
     registerGlobalModunaLangChainHandler,
@@ -252,12 +253,15 @@ export class ModunaOTEL {
      * Creates a LangChain callback handler for per-call usage.
      *
      * @param context Default conversation or session identifiers.
+     * @param config Optional LangChain handler settings.
      * @returns LangChain callback handler that emits Moduna spans.
      */
     public langChainHandler(
         context: ModunaTraceContext = {},
+        config: Omit<ModunaLangChainCallbackHandlerConfig, "traceContext"> = {},
     ): ModunaLangChainCallbackHandler {
         return new ModunaLangChainCallbackHandler({
+            ...config,
             traceContext: context,
         });
     }
@@ -266,12 +270,14 @@ export class ModunaOTEL {
      * Registers a LangChain callback handler for all LangChain runs.
      *
      * @param context Default conversation or session identifiers.
+     * @param config Optional LangChain handler settings.
      * @returns The globally registered LangChain callback handler.
      */
     public registerGlobalLangChainHandler(
         context: ModunaTraceContext = {},
+        config: Omit<ModunaLangChainCallbackHandlerConfig, "traceContext"> = {},
     ): ModunaLangChainCallbackHandler {
-        const handler = this.langChainHandler(context);
+        const handler = this.langChainHandler(context, config);
         registerGlobalModunaLangChainHandler(handler);
         return handler;
     }

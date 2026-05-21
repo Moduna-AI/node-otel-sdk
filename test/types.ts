@@ -19,12 +19,15 @@ const context = {
 
 const telemetry: TelemetrySettings = otel.vercelTelemetry(context);
 const langChainHandler = otel.langChainHandler(context);
+const debugLangChainHandler = otel.langChainHandler(context, { debug: true });
 const exportedHandler = new ModunaLangChainCallbackHandler({
+    debug: true,
     traceContext: context,
 });
 
 void telemetry;
 void langChainHandler;
+void debugLangChainHandler;
 void exportedHandler;
 
 // @ts-expect-error framework names are intentionally constrained.

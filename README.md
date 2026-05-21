@@ -121,10 +121,16 @@ const result = await model.invoke("Hello, world!", {
 });
 ```
 
+Enable callback trace lifecycle logs while debugging instrumentation.
+
+```ts
+const handler = otel.langChainHandler({}, { debug: true });
+```
+
 Or register it globally for all LangChain runs.
 
 ```ts
-otel.registerGlobalLangChainHandler();
+otel.registerGlobalLangChainHandler({}, { debug: true });
 
 const result = await model.invoke("Hello, world!", {
     metadata: {
