@@ -7,3 +7,18 @@ indent_size = 4
 [lint]
 active = true
 rules = ["all"]
+
+[organizeImports]
+enabled = true
+
+[linter.rules.correctness]
+noUnusedVariables = "error"
+noConstAssign = "error"
+
+[linter.rules.style]
+useConst = "error"
+useNamingConvention = "warn"
+
+[linter.rules.suspicious]
+noExplicitAny = "warn"
+noDoubleEquals = "error"

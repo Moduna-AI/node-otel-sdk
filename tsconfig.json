@@ -12,7 +12,9 @@
             "node"
         ],
         "rootDir": ".",
-        "outDir": "dist"
+        "outDir": "dist",
+        "declarationMap": true,
+        "sourceMap": true,
     },
     "include": [
         "src",

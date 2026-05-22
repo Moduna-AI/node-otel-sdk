@@ -1,5 +1,11 @@
 # @moduna/otel
 
+## 1.1.5
+
+### Patch Changes
+
+- Update SDK dependencies and project tooling configuration.
+
 ## 1.1.4
 
 ### Patch Changes
