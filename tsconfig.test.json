@@ -1,14 +1,8 @@
 {
-    "extends": "./tsconfig.json",
-    "compilerOptions": {
-        "allowImportingTsExtensions": true,
-        "noEmit": true
-    },
-    "include": [
-        "src",
-        "services",
-        "interface",
-        "types",
-        "test/**/*.ts"
-    ]
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"allowImportingTsExtensions": true,
+		"noEmit": true
+	},
+	"include": ["src", "services", "interface", "types", "test/**/*.ts"]
 }

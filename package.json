@@ -1,88 +1,89 @@
 {
-    "name": "@moduna/otel",
-    "version": "1.1.5",
-    "private": false,
-    "description": "One-line OpenTelemetry setup for Moduna AI traces.",
-    "license": "MIT",
-    "type": "module",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/Moduna-AI/node-otel-sdk.git"
-    },
-    "bugs": {
-        "url": "https://github.com/Moduna-AI/node-otel-sdk/issues"
-    },
-    "homepage": "https://github.com/Moduna-AI/node-otel-sdk#readme",
-    "main": "./dist/src/index.js",
-    "types": "./dist/src/index.d.ts",
-    "exports": {
-        ".": {
-            "types": "./dist/src/index.d.ts",
-            "import": "./dist/src/index.js"
-        }
-    },
-    "files": [
-        "dist",
-        "README.md",
-        "LICENSE"
-    ],
-    "publishConfig": {
-        "access": "public"
-    },
-    "scripts": {
-        "build": "tsc",
-        "format": "biome format",
-        "lint": "biome lint",
-        "typecheck": "tsc --noEmit -p tsconfig.test.json",
-        "test": "pnpm run build && pnpm run typecheck",
-        "prepack": "pnpm run build",
-        "pack:dry-run": "pnpm pack --dry-run",
-        "changeset": "changeset",
-        "changeset:version": "changeset version",
-        "release": "pnpm run lint && pnpm test && pnpm publish --access public",
-        "test:vercel-ai-sdk": "tsx test/vercel-ai-sdk.ts",
-        "test:langchain": "tsx test/langchain.ts"
-    },
-    "dependencies": {
-        "@langchain/core": "^1.1.47",
-        "@opentelemetry/api": "^1.9.1",
-        "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
-        "@opentelemetry/resources": "^2.7.1",
-        "@opentelemetry/sdk-node": "^0.218.0",
-        "@opentelemetry/semantic-conventions": "^1.41.1"
-    },
-    "peerDependencies": {
-        "@ai-sdk/google": "^3.0.75",
-        "@langchain/google-genai": "^2.1.30",
-        "ai": "^6.0.184",
-        "langchain": "^1.4.0",
-        "openai": "^6.38.0"
-    },
-    "peerDependenciesMeta": {
-        "@ai-sdk/google": {
-            "optional": true
-        },
-        "@langchain/google-genai": {
-            "optional": true
-        },
-        "ai": {
-            "optional": true
-        },
-        "langchain": {
-            "optional": true
-        },
-        "openai": {
-            "optional": true
-        }
-    },
-    "devDependencies": {
-        "@ai-sdk/google": "^3.0.78",
-        "@changesets/cli": "^2.31.0",
-        "@langchain/google-genai": "^2.1.31",
-        "@types/node": "^25.9.1",
-        "ai": "^6.0.188",
-        "biome": "^0.3.3",
-        "tsx": "^4.22.3",
-        "typescript": "^6.0.3"
-    }
+	"name": "@moduna/otel",
+	"version": "1.1.6",
+	"private": false,
+	"author": "Ashwin Thinnappan <balathinnappan@gmail.com>",
+	"description": "One-line OpenTelemetry setup for Moduna AI traces.",
+	"license": "MIT",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Moduna-AI/node-otel-sdk.git"
+	},
+	"bugs": {
+		"url": "https://github.com/Moduna-AI/node-otel-sdk/issues"
+	},
+	"homepage": "https://github.com/Moduna-AI/node-otel-sdk#readme",
+	"main": "./dist/src/index.js",
+	"types": "./dist/src/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/src/index.d.ts",
+			"import": "./dist/src/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsc",
+		"format": "biome format",
+		"lint": "biome lint",
+		"typecheck": "tsc --noEmit -p tsconfig.test.json",
+		"test": "pnpm run build && pnpm run typecheck",
+		"prepack": "pnpm run build",
+		"pack:dry-run": "pnpm pack --dry-run",
+		"changeset": "changeset",
+		"changeset:version": "changeset version",
+		"release": "pnpm run lint && pnpm test && pnpm publish --access public",
+		"test:vercel-ai-sdk": "tsx test/vercel-ai-sdk.ts",
+		"test:langchain": "tsx test/langchain.ts"
+	},
+	"dependencies": {
+		"@langchain/core": "^1.1.47",
+		"@opentelemetry/api": "^1.9.1",
+		"@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
+		"@opentelemetry/resources": "^2.7.1",
+		"@opentelemetry/sdk-node": "^0.218.0",
+		"@opentelemetry/semantic-conventions": "^1.41.1"
+	},
+	"peerDependencies": {
+		"@ai-sdk/google": "^3.0.75",
+		"@langchain/google-genai": "^2.1.30",
+		"ai": "^6.0.184",
+		"langchain": "^1.4.0",
+		"openai": "^6.38.0"
+	},
+	"peerDependenciesMeta": {
+		"@ai-sdk/google": {
+			"optional": true
+		},
+		"@langchain/google-genai": {
+			"optional": true
+		},
+		"ai": {
+			"optional": true
+		},
+		"langchain": {
+			"optional": true
+		},
+		"openai": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@ai-sdk/google": "^3.0.78",
+		"@changesets/cli": "^2.31.0",
+		"@langchain/google-genai": "^2.1.31",
+		"@types/node": "^25.9.1",
+		"ai": "^6.0.188",
+		"@biomejs/biome": "^2.4.15",
+		"tsx": "^4.22.3",
+		"typescript": "^6.0.3"
+	}
 }

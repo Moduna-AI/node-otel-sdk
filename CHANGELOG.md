@@ -1,5 +1,11 @@
 # @moduna/otel
 
+## 1.1.6
+
+### Patch Changes
+
+- Update SDK instrumentation, exports, tests, and project tooling configuration.
+
 ## 1.1.5
 
 ### Patch Changes
