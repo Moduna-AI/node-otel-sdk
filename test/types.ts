@@ -1,34 +1,115 @@
 import type { TelemetrySettings } from "ai";
-import ModunaOTEL, {
+import { describe, expectTypeOf, it } from "vitest";
+import type { ModunaOTELConfig, ModunaTraceContext } from "../src/index.ts";
+import type {
 	ModunaLangChainCallbackHandler,
-	type ModunaOTELConfig,
-	type ModunaTraceContext,
+	ModunaVercelTelemetrySettings,
+	ModunaOTEL,
 } from "../src/index.ts";
 
-const config = {
-	agentName: "type-test",
-	framework: "vercel-ai-sdk",
-} satisfies ModunaOTELConfig;
+/**
+ * Extracts the resolved value type from sync or async callbacks.
+ */
+type AwaitedCallbackResult<TCallback extends (...args: never[]) => unknown> =
+	Awaited<ReturnType<TCallback>>;
 
-const otel = new ModunaOTEL(config);
+/**
+ * Type-level assertion that two types are exactly assignable to one another.
+ */
+type AssertEqual<TActual, TExpected> = [TActual] extends [TExpected]
+	? [TExpected] extends [TActual]
+		? true
+		: false
+	: false;
 
-const context = {
-	conversationId: "conversation-123",
-	sessionId: "session-456",
-} satisfies ModunaTraceContext;
+/**
+ * Captures the inferred result for a sync instrument callback.
+ *
+ * @param otel SDK instance used only for compile-time inference.
+ * @returns Promise-wrapped callback result.
+ */
+const createSyncInstrumentResult = (otel: ModunaOTEL) =>
+	otel.instrument("sync-operation", () => 42);
 
-const telemetry: TelemetrySettings = otel.vercelTelemetry(context);
-const langChainHandler = otel.langChainHandler(context);
-const debugLangChainHandler = otel.langChainHandler(context, { debug: true });
-const exportedHandler = new ModunaLangChainCallbackHandler({
-	debug: true,
-	traceContext: context,
+/**
+ * Captures the inferred result for an async instrument callback with context.
+ *
+ * @param otel SDK instance used only for compile-time inference.
+ * @returns Promise-wrapped async callback result.
+ */
+const createAsyncInstrumentResult = (otel: ModunaOTEL) =>
+	otel.instrument(
+		"async-operation",
+		{
+			conversationId: "conversation-typed",
+		},
+		async () => ({
+			ok: true as const,
+		}),
+	);
+
+describe("Moduna public types", () => {
+	it("accepts strongly typed configuration and trace context objects", () => {
+		const config = {
+			agentName: "type-test",
+			framework: "vercel-ai-sdk",
+		} satisfies ModunaOTELConfig;
+		const legacyConfig = {
+			agentName: "legacy-type-test",
+			sdkIntegration: "langchain",
+		} satisfies ModunaOTELConfig;
+		const context = {
+			conversationId: "conversation-123",
+			sessionId: "session-456",
+		} satisfies ModunaTraceContext;
+
+		expectTypeOf(config.framework).toEqualTypeOf<"vercel-ai-sdk">();
+		expectTypeOf(legacyConfig.sdkIntegration).toEqualTypeOf<"langchain">();
+		expectTypeOf(context).toMatchTypeOf<ModunaTraceContext>();
+	});
+
+	it("preserves Vercel and LangChain integration return types", () => {
+		expectTypeOf<
+			ReturnType<ModunaOTEL["vercelTelemetry"]>
+		>().toEqualTypeOf<ModunaVercelTelemetrySettings>();
+		expectTypeOf<
+			ReturnType<ModunaOTEL["vercelTelemetry"]>
+		>().toMatchTypeOf<TelemetrySettings>();
+		expectTypeOf<
+			ReturnType<ModunaOTEL["langChainHandler"]>
+		>().toEqualTypeOf<ModunaLangChainCallbackHandler>();
+		expectTypeOf<
+			InstanceType<typeof ModunaLangChainCallbackHandler>
+		>().toEqualTypeOf<ModunaLangChainCallbackHandler>();
+	});
+
+	it("infers instrument callback results through the generic overloads", () => {
+		expectTypeOf<ReturnType<typeof createSyncInstrumentResult>>().toEqualTypeOf<
+			Promise<number>
+		>();
+		expectTypeOf<
+			ReturnType<typeof createAsyncInstrumentResult>
+		>().toEqualTypeOf<Promise<{ ok: true }>>();
+		expectTypeOf<
+			AssertEqual<
+				AwaitedCallbackResult<() => Promise<{ ok: true }>>,
+				{ ok: true }
+			>
+		>().toEqualTypeOf<true>();
+	});
 });
 
-void telemetry;
-void langChainHandler;
-void debugLangChainHandler;
-void exportedHandler;
+const invalidFrameworkConfig = {
+	agentName: "type-test",
+	// @ts-expect-error framework names are intentionally constrained.
+	framework: "vercel_ai_sdk",
+} satisfies ModunaOTELConfig;
 
-// @ts-expect-error framework names are intentionally constrained.
-new ModunaOTEL({ agentName: "type-test", framework: "vercel_ai_sdk" });
+const invalidLegacyConfig = {
+	agentName: "type-test",
+	// @ts-expect-error sdkIntegration accepts only supported framework aliases.
+	sdkIntegration: "openai",
+} satisfies ModunaOTELConfig;
+
+void invalidFrameworkConfig;
+void invalidLegacyConfig;

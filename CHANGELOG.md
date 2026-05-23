@@ -1,5 +1,11 @@
 # @moduna/otel
 
+## 1.1.7
+
+### Patch Changes
+
+- Add Vitest-based SDK tests and update package test scripts.
+
 ## 1.1.6
 
 ### Patch Changes
