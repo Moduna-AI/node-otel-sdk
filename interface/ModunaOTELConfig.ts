@@ -1,7 +1,7 @@
 import type {
 	ModunaOTELFramework,
 	ModunaOTELSDKIntegration,
-} from "../types/SupportedSDK.js";
+} from "@/types/SupportedSDK.js";
 
 /**
  * Shared configuration for the Moduna OpenTelemetry SDK.

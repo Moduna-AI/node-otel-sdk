@@ -1,11 +1,12 @@
 import type { TelemetrySettings } from "ai";
 import { describe, expectTypeOf, it } from "vitest";
-import type { ModunaOTELConfig, ModunaTraceContext } from "../src/index.ts";
 import type {
 	ModunaLangChainCallbackHandler,
-	ModunaVercelTelemetrySettings,
 	ModunaOTEL,
-} from "../src/index.ts";
+	ModunaOTELConfig,
+	ModunaTraceContext,
+	ModunaVercelTelemetrySettings,
+} from "../src/index.js";
 
 /**
  * Extracts the resolved value type from sync or async callbacks.
@@ -101,13 +102,11 @@ describe("Moduna public types", () => {
 
 const invalidFrameworkConfig = {
 	agentName: "type-test",
-	// @ts-expect-error framework names are intentionally constrained.
 	framework: "vercel_ai_sdk",
 } satisfies ModunaOTELConfig;
 
 const invalidLegacyConfig = {
 	agentName: "type-test",
-	// @ts-expect-error sdkIntegration accepts only supported framework aliases.
 	sdkIntegration: "openai",
 } satisfies ModunaOTELConfig;
 

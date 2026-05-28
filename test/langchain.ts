@@ -203,9 +203,15 @@ describe("ModunaLangChainCallbackHandler", () => {
 			"parent-run",
 			{
 				invocation_params: {
+					encodingFormats: ["text"],
 					maxOutputTokens: 64,
 					model: "gemini-2.5-flash-lite",
+					presencePenalty: 0.1,
+					stopSequences: ["END"],
 					temperature: 0,
+					toolName: "search",
+					tools: [{ name: "search" }],
+					topP: 0.9,
 				},
 			},
 			["moduna", "unit-test"],
@@ -230,12 +236,31 @@ describe("ModunaLangChainCallbackHandler", () => {
 		);
 		expect(span?.attributes.get("gen_ai.request.max_tokens")).toBe(64);
 		expect(span?.attributes.get("gen_ai.request.temperature")).toBe(0);
+		expect(span?.attributes.get("gen_ai.request.top_p")).toBe(0.9);
+		expect(span?.attributes.get("gen_ai.request.presence_penalty")).toBe(0.1);
+		expect(span?.attributes.get("gen_ai.request.stop_sequences")).toEqual([
+			"END",
+		]);
+		expect(span?.attributes.get("gen_ai.request.encoding_formats")).toEqual([
+			"text",
+		]);
+		expect(span?.attributes.get("gen_ai.response.model")).toBe(
+			"gemini-2.5-flash-lite",
+		);
+		expect(span?.attributes.get("gen_ai.tool.name")).toBe("search");
 		expect(span?.attributes.get("moduna.conversation.id")).toBe(
 			"conversation-langchain",
 		);
 		expect(span?.attributes.get("moduna.session.id")).toBe("session-langchain");
+		expect(span?.attributes.get("gen_ai.prompt")).toBe(
+			JSON.stringify([{ content: "Hi there", role: "user" }]),
+		);
 		expect(span?.attributes.get("gen_ai.prompt.0.role")).toBe("user");
 		expect(span?.attributes.get("gen_ai.prompt.0.content")).toBe("Hi there");
+		expect(span?.attributes.get("gen_ai.prompt.0.message.role")).toBe("user");
+		expect(span?.attributes.get("gen_ai.prompt.0.message.content")).toBe(
+			"Hi there",
+		);
 		expect(span?.events.map((event) => event.name)).toContain(
 			"gen_ai.content.prompt",
 		);
@@ -268,17 +293,69 @@ describe("ModunaLangChainCallbackHandler", () => {
 		expect(span?.attributes.get("gen_ai.completion.0.content")).toBe(
 			"Hello from Gemini",
 		);
+		expect(span?.attributes.get("gen_ai.completion.0.message.role")).toBe(
+			"assistant",
+		);
+		expect(span?.attributes.get("gen_ai.completion.0.message.content")).toBe(
+			"Hello from Gemini",
+		);
+		expect(span?.attributes.get("gen_ai.completion")).toBe(
+			JSON.stringify([{ content: "Hello from Gemini", role: "assistant" }]),
+		);
 		expect(span?.attributes.get("gen_ai.response.model")).toBe(
 			"gemini-2.5-flash-lite",
 		);
 		expect(span?.attributes.get("gen_ai.usage.input_tokens")).toBe(4);
+		expect(span?.attributes.get("gen_ai.usage.prompt_tokens")).toBe(4);
 		expect(span?.attributes.get("gen_ai.usage.output_tokens")).toBe(3);
+		expect(span?.attributes.get("gen_ai.usage.completion_tokens")).toBe(3);
 		expect(span?.attributes.get("gen_ai.usage.total_tokens")).toBe(7);
 		expect(span?.attributes.get("gen_ai.usage.details.reasoning_tokens")).toBe(
 			1,
 		);
 		expect(span?.status).toEqual({ code: 1 });
 		expect(span?.ended).toBe(true);
+	});
+
+	it("maps direct LangChain reasoning tokens and infers usage totals", () => {
+		const handler = new ModunaLangChainCallbackHandler();
+
+		handler.handleLLMStart(
+			createSerializedModel(),
+			["Count this"],
+			"run-usage",
+		);
+		handler.handleLLMEnd(
+			{
+				generations: [
+					[
+						{
+							message: {
+								content: "Done",
+								type: "ai",
+								usage_metadata: {
+									input_tokens: 5,
+									output_tokens: 2,
+									reasoning_tokens: 1,
+								},
+							},
+							text: "Done",
+						},
+					],
+				],
+				llmOutput: {},
+			} as unknown as LLMResult,
+			"run-usage",
+		);
+
+		const span = langChainMocks.spans.at(-1);
+
+		expect(span?.attributes.get("gen_ai.usage.input_tokens")).toBe(5);
+		expect(span?.attributes.get("gen_ai.usage.output_tokens")).toBe(2);
+		expect(span?.attributes.get("gen_ai.usage.total_tokens")).toBe(7);
+		expect(span?.attributes.get("gen_ai.usage.details.reasoning_tokens")).toBe(
+			1,
+		);
 	});
 
 	it("records errors and removes failed runs", () => {

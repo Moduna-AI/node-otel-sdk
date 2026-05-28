@@ -8,6 +8,9 @@
 		"forceConsistentCasingInFileNames": true,
 		"skipLibCheck": true,
 		"declaration": true,
+		"paths": {
+			"@/*": ["./*"]
+		},
 		"types": ["node"],
 		"rootDir": ".",
 		"outDir": "dist",

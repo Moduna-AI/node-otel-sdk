@@ -1,5 +1,6 @@
+import type { Span } from "@opentelemetry/api";
 import { describe, expect, it, vi } from "vitest";
-import { ModunaOTEL } from "../src/index.ts";
+import { ModunaOTEL } from "../src/index.js";
 
 const telemetryMocks = vi.hoisted(() => {
 	/**
@@ -167,7 +168,7 @@ describe("ModunaOTEL Vercel AI SDK telemetry", () => {
 				conversationId: "conversation-generate",
 				sessionId: "session-vercel",
 			},
-			(span) => {
+			(span: Span) => {
 				span.setAttribute("ai.prompt", "hello");
 				return "generated text";
 			},
