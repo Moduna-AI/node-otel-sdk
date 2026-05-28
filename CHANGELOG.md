@@ -1,5 +1,11 @@
 # @moduna/otel
 
+## 1.1.8
+
+### Patch Changes
+
+- Refactor LangChain instrumentation and fix GenAI parameter handling.
+
 ## 1.1.7
 
 ### Patch Changes

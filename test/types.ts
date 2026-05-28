@@ -102,11 +102,13 @@ describe("Moduna public types", () => {
 
 const invalidFrameworkConfig = {
 	agentName: "type-test",
+	// @ts-expect-error framework names are intentionally constrained.
 	framework: "vercel_ai_sdk",
 } satisfies ModunaOTELConfig;
 
 const invalidLegacyConfig = {
 	agentName: "type-test",
+	// @ts-expect-error sdkIntegration names are intentionally constrained.
 	sdkIntegration: "openai",
 } satisfies ModunaOTELConfig;
 
