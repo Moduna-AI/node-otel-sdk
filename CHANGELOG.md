@@ -1,5 +1,11 @@
 # @moduna/otel
 
+## 1.1.10
+
+### Patch Changes
+
+- Add LangChain weather tool-call telemetry coverage and CI test configuration.
+
 ## 1.1.9
 
 ### Patch Changes

@@ -35,6 +35,8 @@ jobs:
               run: pnpm run lint
 
             - name: Test
+              env:
+                  API_KEY_ENV_VAR: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
               run: pnpm test
 
             - name: Pack dry run

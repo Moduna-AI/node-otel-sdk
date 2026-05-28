@@ -2,6 +2,7 @@ import process, { loadEnvFile } from "node:process";
 import type { Serialized } from "@langchain/core/load/serializable";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { LLMResult } from "@langchain/core/outputs";
+import { tool } from "@langchain/core/tools";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -14,6 +15,15 @@ try {
 	loadEnvFile();
 } catch {
 	// The integration test can also run with environment variables from the shell.
+}
+
+const WEATHER_TOOL_NAME = "get_weather";
+
+interface WeatherToolInput {
+	/**
+	 * City or region used for the weather lookup.
+	 */
+	location?: string;
 }
 
 const langChainMocks = vi.hoisted(() => {
@@ -287,11 +297,15 @@ const getRequiredNumberAttribute = (
 const isVerboseReporterEnabled = (): boolean =>
 	process.argv.some(
 		(argument, index, args) =>
+			argument === "--verbose" ||
 			argument === "--reporter=verbose" ||
 			(argument === "--reporter" && args[index + 1] === "verbose"),
 	) ||
+	process.env.MODUNA_TEST_VERBOSE === "true" ||
+	process.env.npm_config_verbose === "true" ||
 	process.env.npm_lifecycle_script?.includes("--reporter verbose") === true ||
 	process.env.npm_lifecycle_script?.includes("--reporter=verbose") === true ||
+	process.env.npm_lifecycle_script?.includes("--verbose") === true ||
 	process.env.npm_lifecycle_event?.endsWith(":verbose") === true;
 
 /**
@@ -311,6 +325,43 @@ const printAttributesForVerboseReporter = (
 		JSON.stringify(Object.fromEntries(attributes), null, 2),
 	);
 };
+
+/**
+ * Returns deterministic weather information for a location.
+ *
+ * @param input Weather lookup arguments.
+ * @returns Weather summary for the requested location.
+ */
+const getWeatherInfo = (input: WeatherToolInput): string => {
+	const location = input.location ?? "unknown location";
+
+	return `Weather for ${location}: 29 C, partly cloudy, humidity 72%, light breeze.`;
+};
+
+/**
+ * Creates a deterministic weather tool for LangChain tool-call tests.
+ *
+ * @returns Structured weather lookup tool.
+ */
+const createWeatherTool = () =>
+	tool(
+		(input: WeatherToolInput): string => getWeatherInfo(input),
+		{
+			description: "Get current weather information for a particular location.",
+			name: WEATHER_TOOL_NAME,
+			schema: {
+				additionalProperties: false,
+				properties: {
+					location: {
+						description: "The city, region, or address to get weather for.",
+						type: "string",
+					},
+				},
+				required: ["location"],
+				type: "object",
+			},
+		},
+	);
 
 describe("ModunaLangChainCallbackHandler", () => {
 	it("captures chat model start metadata and trace context", () => {
@@ -702,6 +753,97 @@ describe("ModunaLangChainCallbackHandler", () => {
 		);
 		expect(span.status).toEqual({ code: 1 });
 		expect(span.ended).toBe(true);
+
+		await otel.shutdown();
+	}, 60_000);
+
+	it("captures a real Google LangChain weather tool call through the SDK handler", async () => {
+		const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+
+		if (!apiKey) {
+			throw new Error(
+				"Missing GOOGLE_GENERATIVE_AI_API_KEY environment variable.",
+			);
+		}
+
+		const otel = new ModunaOTEL({
+			agentName: "moduna-langchain-google-tool-vitest",
+			autoShutdown: false,
+			framework: "langchain",
+		});
+		const handler = otel.langChainHandler({
+			conversationId: "conversation-real-langchain-weather-tool",
+			sessionId: "session-real-langchain-weather-tool",
+		});
+		const weatherTool = createWeatherTool();
+		const llm = new ChatGoogleGenerativeAI({
+			apiKey,
+			maxOutputTokens: 64,
+			model: "gemini-2.5-flash-lite",
+			temperature: 0,
+		});
+		const llmWithWeatherTool = llm.bindTools([weatherTool], {
+			allowedFunctionNames: [WEATHER_TOOL_NAME],
+		});
+
+		const response = await llmWithWeatherTool.invoke(
+			"Use the get_weather tool to get weather information for Chennai, India.",
+			{
+				callbacks: [handler],
+				metadata: {
+					conversationId: "conversation-real-langchain-weather-tool",
+					sessionId: "session-real-langchain-weather-tool",
+				},
+			},
+		);
+		const toolCall = response.tool_calls?.find(
+			(call) => call.name === WEATHER_TOOL_NAME,
+		);
+		const span = langChainMocks.spans.at(-1);
+		const attributes = span?.attributes;
+
+		expect(toolCall).toBeDefined();
+
+		if (!toolCall) {
+			throw new Error("Expected Google to return a get_weather tool call.");
+		}
+
+		const weatherResult = getWeatherInfo(toolCall.args as WeatherToolInput);
+
+		expect(weatherResult).toContain("Weather for");
+		expect(weatherResult).toContain("Chennai");
+		expect(attributes).toBeDefined();
+
+		if (!attributes) {
+			throw new Error("Expected the weather tool call to create a span.");
+		}
+
+		printAttributesForVerboseReporter(attributes);
+
+		expect(attributes.get("moduna.framework")).toBe("langchain");
+		expect(attributes.get("sdk.integration")).toBe("langchain");
+		expect(attributes.get("gen_ai.system")).toBe("google");
+		expect(attributes.get("gen_ai.operation.name")).toBe("chat");
+		expect(attributes.get("llm.request.type")).toBe("chat");
+		expect(attributes.get("moduna.conversation.id")).toBe(
+			"conversation-real-langchain-weather-tool",
+		);
+		expect(attributes.get("moduna.session.id")).toBe(
+			"session-real-langchain-weather-tool",
+		);
+		expect(attributes.get("gen_ai.prompt.0.content")).toBe(
+			"Use the get_weather tool to get weather information for Chennai, India.",
+		);
+		expect(attributes.get("tools")).toContain(WEATHER_TOOL_NAME);
+		expect(attributes.get("llm.invocation_parameters")).toContain(
+			WEATHER_TOOL_NAME,
+		);
+		expect(attributes.get("langchain.output.generations")).toBe(1);
+		expect(attributes.get("langchain.output.candidates")).toBe(1);
+		expect(attributes.get("gen_ai.completion.0.role")).toBe("assistant");
+		expect(attributes.get("gen_ai.completion")).toContain(WEATHER_TOOL_NAME);
+		expect(span?.status).toEqual({ code: 1 });
+		expect(span?.ended).toBe(true);
 
 		await otel.shutdown();
 	}, 60_000);
