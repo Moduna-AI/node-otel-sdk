@@ -42,7 +42,7 @@ jobs:
 
             - name: Configure npm authentication
               run: |
-                  npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN" --location project
+                  npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN" --location user
                   npm whoami --registry https://registry.npmjs.org
 
             - name: Create release PR or publish
