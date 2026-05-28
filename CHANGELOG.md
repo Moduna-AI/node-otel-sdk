@@ -1,5 +1,11 @@
 # @moduna/otel
 
+## 1.1.9
+
+### Patch Changes
+
+- Add verbose LangChain test scripts and expanded GenAI telemetry assertions.
+
 ## 1.1.8
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@moduna/otel",
-	"version": "1.1.8",
+	"version": "1.1.9",
 	"private": false,
 	"keywords": [
 		"opentelemetry",
@@ -50,7 +50,9 @@
 		"changeset:version": "changeset version",
 		"release": "pnpm run lint && pnpm test && pnpm publish --access public",
 		"test:vercel-ai-sdk": "vitest run test/vercel-ai-sdk.ts",
-		"test:langchain": "vitest run test/langchain.ts"
+		"test:langchain": "vitest run test/langchain.ts",
+		"test:langchain:verbose": "vitest run test/langchain.ts --reporter verbose --disableConsoleIntercept",
+		"test:verbose": "vitest run --reporter verbose --disableConsoleIntercept"
 	},
 	"dependencies": {
 		"@langchain/core": "^1.1.48",
