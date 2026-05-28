@@ -8,6 +8,9 @@ on:
 permissions:
     contents: read
 
+env:
+    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
     build:
         name: Build, lint, typecheck, and pack
@@ -36,7 +39,7 @@ jobs:
 
             - name: Test
               env:
-                  API_KEY_ENV_VAR: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+                  GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
               run: pnpm test
 
             - name: Pack dry run
