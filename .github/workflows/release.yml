@@ -16,6 +16,10 @@ jobs:
     release:
         name: Version or publish package
         runs-on: ubuntu-latest
+        env:
+            NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+            NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+            GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
 
         steps:
             - name: Checkout
@@ -38,10 +42,8 @@ jobs:
 
             - name: Configure npm authentication
               run: |
-                  npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN"
+                  npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN" --location project
                   npm whoami --registry https://registry.npmjs.org
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
             - name: Create release PR or publish
               uses: changesets/action@v1
@@ -52,6 +54,6 @@ jobs:
                   commit: "Release package updates"
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-                  GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+                  NPM_TOKEN: ${{ env.NPM_TOKEN }}
+                  NODE_AUTH_TOKEN: ${{ env.NODE_AUTH_TOKEN }}
+                  GOOGLE_GENERATIVE_AI_API_KEY: ${{ env.GOOGLE_GENERATIVE_AI_API_KEY }}
