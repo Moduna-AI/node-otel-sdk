@@ -344,24 +344,21 @@ const getWeatherInfo = (input: WeatherToolInput): string => {
  * @returns Structured weather lookup tool.
  */
 const createWeatherTool = () =>
-	tool(
-		(input: WeatherToolInput): string => getWeatherInfo(input),
-		{
-			description: "Get current weather information for a particular location.",
-			name: WEATHER_TOOL_NAME,
-			schema: {
-				additionalProperties: false,
-				properties: {
-					location: {
-						description: "The city, region, or address to get weather for.",
-						type: "string",
-					},
+	tool((input: WeatherToolInput): string => getWeatherInfo(input), {
+		description: "Get current weather information for a particular location.",
+		name: WEATHER_TOOL_NAME,
+		schema: {
+			additionalProperties: false,
+			properties: {
+				location: {
+					description: "The city, region, or address to get weather for.",
+					type: "string",
 				},
-				required: ["location"],
-				type: "object",
 			},
+			required: ["location"],
+			type: "object",
 		},
-	);
+	});
 
 describe("ModunaLangChainCallbackHandler", () => {
 	it("captures chat model start metadata and trace context", () => {

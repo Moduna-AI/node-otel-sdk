@@ -1,5 +1,11 @@
 # @moduna/otel
 
+## 1.2.0
+
+### Minor Changes
+
+- Prepare a minor SDK release with LangChain weather tool test cleanup.
+
 ## 1.1.10
 
 ### Patch Changes
