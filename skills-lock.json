@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "typescript-advanced-types": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/javascript-typescript/skills/typescript-advanced-types/SKILL.md",
+      "computedHash": "8cbf2bf600f392d7260e476e3202932a876e2281cda3b15a8b6a5a43f383252d"
+    },
+    "typescript-docs": {
+      "source": "giuseppe-trisciuoglio/developer-kit",
+      "sourceType": "github",
+      "skillPath": "plugins/developer-kit-typescript/skills/typescript-docs/SKILL.md",
+      "computedHash": "9e2c39b8a9ea569feb0c90080b10a71371e2d2d8ffb35de4fc5f7afe2a442f67"
+    }
+  }
+}
