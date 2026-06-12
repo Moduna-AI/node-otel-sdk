@@ -1,0 +1,79 @@
+{
+  "name": "@moduna/otel",
+  "version": "0.1.0",
+  "description": "Strictly typed Moduna SDK for collecting OpenTelemetry traces from GenAI applications",
+  "keywords": [
+    "moduna",
+    "opentelemetry",
+    "otel",
+    "observability",
+    "llm",
+    "tracing",
+    "ai"
+  ],
+  "homepage": "https://github.com/moduna-ai/moduna-typescript#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moduna-ai/moduna-typescript.git"
+  },
+  "bugs": {
+    "url": "https://github.com/moduna-ai/moduna-typescript/issues"
+  },
+  "license": "Apache-2.0",
+  "author": "Moduna",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "RUN_E2E=1 vitest run tests/live-provider.test.ts",
+    "test:watch": "vitest",
+    "docs:api": "typedoc"
+  },
+  "peerDependencies": {
+    "@traceloop/node-server-sdk": "^0.27.0"
+  },
+  "peerDependenciesMeta": {
+    "@traceloop/node-server-sdk": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
+    "@langchain/google-genai": "^2.1.31",
+    "@types/node": "^25.9.3",
+    "typedoc": "^0.28.19",
+    "typedoc-plugin-markdown": "^4.12.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  },
+  "packageManager": "pnpm@11.6.0"
+}

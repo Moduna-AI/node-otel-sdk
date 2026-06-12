@@ -1,0 +1,7 @@
+{
+    "editor.formatOnSave": true,
+    "[json]": {
+        "editor.tabSize": 4,
+        "editor.formatOnSave": true
+    }
+}

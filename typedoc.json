@@ -1,0 +1,16 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "entryPointStrategy": "resolve",
+  "out": "docs/api",
+  "theme": "markdown",
+  "readme": "README.md",
+  "includeVersion": true,
+  "excludeInternal": true,
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeExternals": true,
+  "searchInComments": true,
+  "cleanOutputDir": true,
+  "sort": ["source-order"],
+  "plugin": ["typedoc-plugin-markdown"]
+}
