@@ -1,6 +1,6 @@
 {
   "name": "@moduna/otel",
-  "version": "0.1.0",
+  "version": "1.2.12",
   "description": "Strictly typed Moduna SDK for collecting OpenTelemetry traces from GenAI applications",
   "keywords": [
     "moduna",
@@ -11,13 +11,13 @@
     "tracing",
     "ai"
   ],
-  "homepage": "https://github.com/moduna-ai/moduna-typescript#readme",
+  "homepage": "https://github.com/Moduna-AI/node-otel-sdk#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/moduna-ai/moduna-typescript.git"
+    "url": "git+https://github.com/Moduna-AI/node-otel-sdk.git"
   },
   "bugs": {
-    "url": "https://github.com/moduna-ai/moduna-typescript/issues"
+    "url": "https://github.com/Moduna-AI/node-otel-sdk/issues"
   },
   "license": "Apache-2.0",
   "author": "Moduna",
@@ -47,7 +47,8 @@
     "provenance": true
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "prebuild": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "tsc -p tsconfig.build.json",
     "lint": "biome check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
